@@ -1,15 +1,22 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="currency (live rates) — Oriz Universal Converter" description="currency (live rates) — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Currency Converter (Live Rates) — Oriz Universal Converter" description="Convert currencies with live exchange rates from open.er-api.com — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">currency (live rates)</h1>
-    <p class="status mono">coming · v0.1</p>
-    <p class="lede">
-      This feature is on the v0.1 roadmap. The page exists so we can iterate on
-      the design and copy in parallel; the implementation lands next sprint.
-    </p>
+    <h1 class="h1">currency converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <div class="rate-bar">
+      <span id="rate-info" class="mono">loading rates…</span>
+      <button id="refresh-btn" class="refresh-btn mono" title="Refresh rates">↻ refresh</button>
+    </div>
+
+    <div class="converter" id="currency-grid">
+      <!-- rows injected by JS -->
+    </div>
+
+    <p class="hint mono">Rates from <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">open.er-api.com</a> · updated daily · no key required.</p>
   </article>
 </BaseLayout>
 
@@ -19,20 +26,113 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .back a { color: var(--muted); text-decoration: none; }
   .back a:hover { color: var(--ink); }
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
-  .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
+  .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 1.5rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .rate-bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  #rate-info { font-size: 12px; color: var(--muted); }
+  .refresh-btn {
+    padding: 0.3rem 0.75rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms;
+  }
+  .refresh-btn:hover { color: var(--ink); border-color: var(--ink); }
+  .converter { display: grid; gap: 0.75rem; max-width: 40rem; margin-bottom: 1rem; }
+  .row { display: grid; grid-template-columns: 5rem 1fr; align-items: center; gap: 1rem; }
+  .cur-label { font-size: 0.9375rem; color: var(--muted); font-family: var(--font-mono); font-weight: 600; }
+  .cur-input {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.875rem;
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  .cur-input:focus { border-color: var(--accent); }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 1rem; }
+  .hint a { color: var(--muted); }
+  .error-msg { color: #dc2626; font-size: 0.9rem; }
+  @media (max-width: 540px) { .row { grid-template-columns: 4rem 1fr; } }
 </style>
+
+<script>
+  const CURRENCIES = ['USD','EUR','GBP','INR','JPY','CAD','AUD','CHF','CNY','MXN','BRL','SGD','HKD','NOK','SEK']
+  const CACHE_KEY = 'oriz_currency_rates'
+  const CACHE_TTL = 3600 * 1000 // 1 hour
+
+  const grid = document.getElementById('currency-grid')!
+  const rateInfo = document.getElementById('rate-info')!
+  const refreshBtn = document.getElementById('refresh-btn')!
+
+  let rates: Record<string, number> = {}
+  let activeInput: HTMLInputElement | null = null
+
+  function fmt(n: number): string {
+    if (!isFinite(n)) return ''
+    return parseFloat(n.toPrecision(8)).toString()
+  }
+
+  function buildGrid() {
+    grid.innerHTML = ''
+    CURRENCIES.forEach(cur => {
+      const row = document.createElement('div')
+      row.className = 'row'
+      row.innerHTML = `<label class="cur-label" for="cur-${cur}">${cur}</label><input id="cur-${cur}" class="cur-input" type="number" step="any" placeholder="0" data-cur="${cur}" />`
+      grid.appendChild(row)
+    })
+    const inputs = grid.querySelectorAll<HTMLInputElement>('.cur-input')
+    inputs.forEach(input => {
+      input.addEventListener('focus', () => { activeInput = input })
+      input.addEventListener('input', () => {
+        if (!Object.keys(rates).length) return
+        const raw = input.value.trim()
+        if (raw === '') {
+          inputs.forEach(i => { if (i !== input) i.value = '' })
+          return
+        }
+        const val = parseFloat(raw)
+        if (isNaN(val)) return
+        const cur = input.dataset.cur!
+        const usdVal = val / rates[cur]
+        inputs.forEach(i => {
+          if (i === input) return
+          i.value = fmt(usdVal * rates[i.dataset.cur!])
+        })
+      })
+    })
+  }
+
+  async function loadRates(forceRefresh = false) {
+    rateInfo.textContent = 'loading rates…'
+    try {
+      const cached = !forceRefresh && localStorage.getItem(CACHE_KEY)
+      let data: { rates: Record<string, number>; time_last_update_utc: string } | null = null
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Date.now() - parsed.ts < CACHE_TTL) data = parsed
+      }
+      if (!data) {
+        const resp = await fetch('https://open.er-api.com/v6/latest/USD')
+        if (!resp.ok) throw new Error('fetch failed')
+        data = await resp.json()
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, ts: Date.now() }))
+      }
+      rates = data!.rates
+      const updated = data!.time_last_update_utc?.slice(0, 16) ?? 'unknown'
+      rateInfo.textContent = `rates as of ${updated} UTC`
+    } catch (e) {
+      rateInfo.textContent = 'could not load rates — check connection'
+      rateInfo.classList.add('error-msg')
+    }
+  }
+
+  buildGrid()
+  loadRates()
+  refreshBtn.addEventListener('click', () => loadRates(true))
+</script>

@@ -1,15 +1,40 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="number bases (bin / oct / dec / hex) — Oriz Universal Converter" description="number bases (bin / oct / dec / hex) — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Number Base Converter (Decimal / Binary / Hex / Octal) — Oriz Universal Converter" description="Convert between decimal, binary, hexadecimal, and octal number bases — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">number bases (bin / oct / dec / hex)</h1>
-    <p class="status mono">coming · v0.1</p>
-    <p class="lede">
-      This feature is on the v0.1 roadmap. The page exists so we can iterate on
-      the design and copy in parallel; the implementation lands next sprint.
-    </p>
+    <h1 class="h1">number base converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <div class="converter">
+      <div class="row">
+        <label for="dec">Decimal (base 10)</label>
+        <input id="dec" class="base-input" type="text" inputmode="numeric" placeholder="42" data-base="10" />
+      </div>
+      <div class="row">
+        <label for="bin">Binary (base 2)</label>
+        <input id="bin" class="base-input" type="text" placeholder="101010" data-base="2" />
+      </div>
+      <div class="row">
+        <label for="oct">Octal (base 8)</label>
+        <input id="oct" class="base-input" type="text" placeholder="52" data-base="8" />
+      </div>
+      <div class="row">
+        <label for="hex">Hexadecimal (base 16)</label>
+        <input id="hex" class="base-input" type="text" placeholder="2A" data-base="16" />
+      </div>
+      <div class="row">
+        <label for="b32">Base 32</label>
+        <input id="b32" class="base-input" type="text" placeholder="" data-base="32" />
+      </div>
+      <div class="row">
+        <label for="b36">Base 36</label>
+        <input id="b36" class="base-input" type="text" placeholder="" data-base="36" />
+      </div>
+    </div>
+    <p class="note mono" id="err-msg"></p>
+    <button class="reset-btn" id="reset">Reset</button>
   </article>
 </BaseLayout>
 
@@ -21,18 +46,74 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
   .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .converter { display: grid; gap: 0.75rem; max-width: 36rem; margin-bottom: 1rem; }
+  .row { display: grid; grid-template-columns: 14rem 1fr; align-items: center; gap: 1rem; }
+  label { font-size: 0.9375rem; color: var(--muted); font-family: var(--font-mono); }
+  .base-input {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.875rem;
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms;
+    text-transform: uppercase;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  .base-input:focus { border-color: var(--accent); }
+  .base-input.invalid { border-color: #dc2626; }
+  .note { font-size: 11px; color: #dc2626; margin: 0.25rem 0 1rem; min-height: 1.4em; }
+  .reset-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 120ms, border-color 120ms;
+  }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 540px) { .row { grid-template-columns: 1fr; gap: 0.25rem; } }
 </style>
+
+<script>
+  const inputs = document.querySelectorAll<HTMLInputElement>('.base-input')
+  const errMsg = document.getElementById('err-msg')!
+
+  inputs.forEach(input => {
+    input.addEventListener('input', () => {
+      const raw = input.value.trim()
+      errMsg.textContent = ''
+      inputs.forEach(i => i.classList.remove('invalid'))
+      if (raw === '') {
+        inputs.forEach(i => { if (i !== input) i.value = '' })
+        return
+      }
+      const base = parseInt(input.dataset.base!)
+      // Validate chars
+      const valid = [...raw.toUpperCase()].every(ch => parseInt(ch, base) < base || (base > 10 && ch >= 'A' && ch <= String.fromCharCode(64 + base - 10)))
+      const n = parseInt(raw, base)
+      if (isNaN(n)) {
+        input.classList.add('invalid')
+        errMsg.textContent = `"${raw}" is not a valid base-${base} number`
+        return
+      }
+      if (!Number.isSafeInteger(n)) {
+        errMsg.textContent = 'Number too large for safe integer arithmetic'
+        return
+      }
+      inputs.forEach(i => {
+        if (i === input) return
+        i.value = n.toString(parseInt(i.dataset.base!)).toUpperCase()
+      })
+    })
+  })
+
+  document.getElementById('reset')!.addEventListener('click', () => {
+    inputs.forEach(i => { i.value = ''; i.classList.remove('invalid') })
+    errMsg.textContent = ''
+  })
+</script>

@@ -2,6 +2,7 @@
 import '~/styles/global.css'
 import { signInUrl } from '@chirag127/astro-shell/auth-gate'
 import { pricingUrl } from '@chirag127/astro-shell/pricing-url'
+import FamilySidebar from '@chirag127/astro-shell/components/FamilySidebar.astro'
 
 interface Props {
   title?: string
@@ -42,7 +43,22 @@ const signInHref = signInUrl()
         <a href={signInHref}>sign in</a>
       </nav>
     </header>
-    <main id="main"><slot /></main>
+    <div class="oriz-shell">
+      <FamilySidebar slug="oriz-shift-convert-tools-app" title="Convert Tools">
+        <a slot="tools" href="/tools/length/">Length</a>
+        <a slot="tools" href="/tools/weight/">Weight</a>
+        <a slot="tools" href="/tools/temperature/">Temperature</a>
+        <a slot="tools" href="/tools/area-volume/">Area & Volume</a>
+        <a slot="tools" href="/tools/speed/">Speed</a>
+        <a slot="tools" href="/tools/time/">Time</a>
+        <a slot="tools" href="/tools/data/">Data Size</a>
+        <a slot="tools" href="/tools/energy/">Energy & Pressure</a>
+        <a slot="tools" href="/tools/number-base/">Number Base</a>
+        <a slot="tools" href="/tools/currency/">Currency</a>
+        <a slot="tools" href="/tools/timezone/">Timezone</a>
+      </FamilySidebar>
+      <main id="main" class="oriz-main"><slot /></main>
+    </div>
     <footer class="site">
       <span>Oriz Universal Converter · part of the <a href="https://oriz.in">oriz</a> family · runs in your browser</span>
       <span>

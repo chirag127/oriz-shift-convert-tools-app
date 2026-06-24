@@ -1,16 +1,39 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="weight (kg / lb / oz / ton) — Oriz Universal Converter" description="weight (kg / lb / oz / ton) — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Weight Converter (kg / g / lb / oz) — Oriz Universal Converter" description="Convert between kilograms, grams, pounds, ounces — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">weight (kg / lb / oz / ton)</h1>
-    <p class="status mono ready">ready · v0</p>
-    <div class="placeholder">
-      <p>This tool is wired. Drop in your input or paste below — everything stays in your browser.</p>
-      <textarea class="io" placeholder="paste input here…" rows="8"></textarea>
-      <p class="hint mono">v0 = UI present + core path wired. Full feature set lands in v0.1.</p>
+    <h1 class="h1">weight converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <div class="converter">
+      <div class="row">
+        <label for="val-kg">Kilograms (kg)</label>
+        <input id="val-kg" class="num-input" type="number" step="any" placeholder="0" data-unit="kg" />
+      </div>
+      <div class="row">
+        <label for="val-g">Grams (g)</label>
+        <input id="val-g" class="num-input" type="number" step="any" placeholder="0" data-unit="g" />
+      </div>
+      <div class="row">
+        <label for="val-lb">Pounds (lb)</label>
+        <input id="val-lb" class="num-input" type="number" step="any" placeholder="0" data-unit="lb" />
+      </div>
+      <div class="row">
+        <label for="val-oz">Ounces (oz)</label>
+        <input id="val-oz" class="num-input" type="number" step="any" placeholder="0" data-unit="oz" />
+      </div>
+      <div class="row">
+        <label for="val-st">Stone (st)</label>
+        <input id="val-st" class="num-input" type="number" step="any" placeholder="0" data-unit="st" />
+      </div>
+      <div class="row">
+        <label for="val-ton">Metric Ton (t)</label>
+        <input id="val-ton" class="num-input" type="number" step="any" placeholder="0" data-unit="ton" />
+      </div>
     </div>
+    <button class="reset-btn" id="reset">Reset</button>
   </article>
 </BaseLayout>
 
@@ -22,18 +45,73 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
   .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .converter { display: grid; gap: 0.75rem; max-width: 36rem; margin-bottom: 1.5rem; }
+  .row { display: grid; grid-template-columns: 14rem 1fr; align-items: center; gap: 1rem; }
+  label { font-size: 0.9375rem; color: var(--muted); font-family: var(--font-mono); }
+  .num-input {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.875rem;
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  .num-input:focus { border-color: var(--accent); }
+  .reset-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 120ms, border-color 120ms;
+  }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 540px) { .row { grid-template-columns: 1fr; gap: 0.25rem; } }
 </style>
+
+<script>
+  // kilograms per unit
+  const TO_KG: Record<string, number> = {
+    kg:  1,
+    g:   0.001,
+    lb:  0.45359237,
+    oz:  0.028349523125,
+    st:  6.35029318,
+    ton: 1000,
+  }
+
+  const inputs = document.querySelectorAll<HTMLInputElement>('.num-input')
+
+  function fmt(n: number): string {
+    if (!isFinite(n)) return ''
+    return parseFloat(n.toPrecision(10)).toString()
+  }
+
+  inputs.forEach(input => {
+    input.addEventListener('input', () => {
+      const raw = input.value.trim()
+      if (raw === '' || raw === '-') {
+        inputs.forEach(i => { if (i !== input) i.value = '' })
+        return
+      }
+      const val = parseFloat(raw)
+      if (isNaN(val)) return
+      const unit = input.dataset.unit!
+      const kg = val * TO_KG[unit]
+      inputs.forEach(i => {
+        if (i === input) return
+        i.value = fmt(kg / TO_KG[i.dataset.unit!])
+      })
+    })
+  })
+
+  document.getElementById('reset')!.addEventListener('click', () => {
+    inputs.forEach(i => { i.value = '' })
+  })
+</script>

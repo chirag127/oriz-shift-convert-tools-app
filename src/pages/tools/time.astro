@@ -1,15 +1,51 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="time — Oriz Universal Converter" description="time — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Time Duration Converter (seconds / minutes / hours / days) — Oriz Universal Converter" description="Convert time durations between seconds, minutes, hours, days, weeks — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">time</h1>
-    <p class="status mono">coming · v0.1</p>
-    <p class="lede">
-      This feature is on the v0.1 roadmap. The page exists so we can iterate on
-      the design and copy in parallel; the implementation lands next sprint.
-    </p>
+    <h1 class="h1">time duration converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <div class="converter">
+      <div class="row">
+        <label for="ns">Nanoseconds (ns)</label>
+        <input id="ns" class="num-input" type="number" step="any" placeholder="0" data-unit="ns" />
+      </div>
+      <div class="row">
+        <label for="us">Microseconds (µs)</label>
+        <input id="us" class="num-input" type="number" step="any" placeholder="0" data-unit="us" />
+      </div>
+      <div class="row">
+        <label for="ms">Milliseconds (ms)</label>
+        <input id="ms" class="num-input" type="number" step="any" placeholder="0" data-unit="ms" />
+      </div>
+      <div class="row">
+        <label for="s">Seconds (s)</label>
+        <input id="s" class="num-input" type="number" step="any" placeholder="0" data-unit="s" />
+      </div>
+      <div class="row">
+        <label for="min">Minutes (min)</label>
+        <input id="min" class="num-input" type="number" step="any" placeholder="0" data-unit="min" />
+      </div>
+      <div class="row">
+        <label for="hr">Hours (hr)</label>
+        <input id="hr" class="num-input" type="number" step="any" placeholder="0" data-unit="hr" />
+      </div>
+      <div class="row">
+        <label for="day">Days</label>
+        <input id="day" class="num-input" type="number" step="any" placeholder="0" data-unit="day" />
+      </div>
+      <div class="row">
+        <label for="wk">Weeks</label>
+        <input id="wk" class="num-input" type="number" step="any" placeholder="0" data-unit="wk" />
+      </div>
+      <div class="row">
+        <label for="yr">Years (365d)</label>
+        <input id="yr" class="num-input" type="number" step="any" placeholder="0" data-unit="yr" />
+      </div>
+    </div>
+    <button class="reset-btn" id="reset">Reset</button>
   </article>
 </BaseLayout>
 
@@ -21,18 +57,75 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
   .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .converter { display: grid; gap: 0.75rem; max-width: 36rem; margin-bottom: 1.5rem; }
+  .row { display: grid; grid-template-columns: 14rem 1fr; align-items: center; gap: 1rem; }
+  label { font-size: 0.9375rem; color: var(--muted); font-family: var(--font-mono); }
+  .num-input {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.875rem;
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  .num-input:focus { border-color: var(--accent); }
+  .reset-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 120ms, border-color 120ms;
+  }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 540px) { .row { grid-template-columns: 1fr; gap: 0.25rem; } }
 </style>
+
+<script>
+  // seconds per unit
+  const TO_S: Record<string, number> = {
+    ns:  1e-9,
+    us:  1e-6,
+    ms:  1e-3,
+    s:   1,
+    min: 60,
+    hr:  3600,
+    day: 86400,
+    wk:  604800,
+    yr:  31536000,
+  }
+
+  function fmt(n: number): string {
+    if (!isFinite(n)) return ''
+    return parseFloat(n.toPrecision(10)).toString()
+  }
+
+  const inputs = document.querySelectorAll<HTMLInputElement>('.num-input')
+  inputs.forEach(input => {
+    input.addEventListener('input', () => {
+      const raw = input.value.trim()
+      if (raw === '' || raw === '-') {
+        inputs.forEach(i => { if (i !== input) i.value = '' })
+        return
+      }
+      const val = parseFloat(raw)
+      if (isNaN(val)) return
+      const unit = input.dataset.unit!
+      const seconds = val * TO_S[unit]
+      inputs.forEach(i => {
+        if (i === input) return
+        i.value = fmt(seconds / TO_S[i.dataset.unit!])
+      })
+    })
+  })
+
+  document.getElementById('reset')!.addEventListener('click', () => {
+    inputs.forEach(i => { i.value = '' })
+  })
+</script>

@@ -1,15 +1,30 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="timezone meeting planner — Oriz Universal Converter" description="timezone meeting planner — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Timezone Converter — Oriz Universal Converter" description="Convert times between any two timezones — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">timezone meeting planner</h1>
-    <p class="status mono">coming · v0.1</p>
-    <p class="lede">
-      This feature is on the v0.1 roadmap. The page exists so we can iterate on
-      the design and copy in parallel; the implementation lands next sprint.
-    </p>
+    <h1 class="h1">timezone converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <div class="controls">
+      <div class="tz-row">
+        <div class="tz-panel">
+          <label class="tz-label" for="tz-a">Timezone A</label>
+          <select id="tz-a" class="tz-select"></select>
+          <input id="time-a" class="time-input" type="datetime-local" />
+        </div>
+        <div class="arrow">→</div>
+        <div class="tz-panel">
+          <label class="tz-label" for="tz-b">Timezone B</label>
+          <select id="tz-b" class="tz-select"></select>
+          <div id="time-b-display" class="time-display mono">—</div>
+        </div>
+      </div>
+      <button class="reset-btn" id="reset">Reset</button>
+    </div>
+
+    <div class="offset-info mono" id="offset-info"></div>
   </article>
 </BaseLayout>
 
@@ -21,18 +36,141 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
   .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .controls { max-width: 48rem; }
+  .tz-row { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .tz-panel { flex: 1; min-width: 14rem; display: grid; gap: 0.5rem; }
+  .tz-label { font-size: 12px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .tz-select, .time-input {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
     font-size: 0.875rem;
-    resize: vertical;
+    outline: none;
+    transition: border-color 120ms;
+    width: 100%;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  .tz-select:focus, .time-input:focus { border-color: var(--accent); }
+  .arrow { font-size: 1.5rem; color: var(--muted); align-self: flex-end; padding-bottom: 0.75rem; }
+  .time-display {
+    padding: 0.6rem 0.875rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    font-size: 1rem;
+    color: var(--ink);
+    min-height: 2.5rem;
+  }
+  .offset-info { font-size: 12px; color: var(--muted); margin-top: 0.75rem; }
+  .reset-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 120ms, border-color 120ms;
+  }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 600px) { .arrow { display: none; } .tz-row { flex-direction: column; } }
 </style>
+
+<script>
+  const TZ_LIST = Intl.supportedValuesOf
+    ? (Intl as any).supportedValuesOf('timeZone') as string[]
+    : [
+        'UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+        'America/Sao_Paulo','Europe/London','Europe/Paris','Europe/Berlin','Europe/Moscow',
+        'Asia/Dubai','Asia/Kolkata','Asia/Dhaka','Asia/Bangkok','Asia/Singapore',
+        'Asia/Tokyo','Asia/Shanghai','Asia/Seoul','Australia/Sydney','Pacific/Auckland'
+      ]
+
+  const tzA = document.getElementById('tz-a') as HTMLSelectElement
+  const tzB = document.getElementById('tz-b') as HTMLSelectElement
+  const timeA = document.getElementById('time-a') as HTMLInputElement
+  const timeBDisplay = document.getElementById('time-b-display')!
+  const offsetInfo = document.getElementById('offset-info')!
+
+  function populateSelect(sel: HTMLSelectElement, defaultTz: string) {
+    TZ_LIST.forEach(tz => {
+      const opt = document.createElement('option')
+      opt.value = tz
+      opt.textContent = tz
+      if (tz === defaultTz) opt.selected = true
+      sel.appendChild(opt)
+    })
+  }
+
+  function userLocalTz(): string {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone } catch { return 'UTC' }
+  }
+
+  populateSelect(tzA, userLocalTz())
+  populateSelect(tzB, 'UTC')
+
+  // Set default datetime to now (local)
+  function nowLocalString() {
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  timeA.value = nowLocalString()
+
+  function convert() {
+    const raw = timeA.value
+    if (!raw) { timeBDisplay.textContent = '—'; return }
+    const tzSrc = tzA.value
+    const tzDst = tzB.value
+    try {
+      // Parse the datetime-local value as if it's in tzSrc
+      const [datePart, timePart] = raw.split('T')
+      const [y, mo, d] = datePart.split('-').map(Number)
+      const [h, mi] = timePart.split(':').map(Number)
+      // Get UTC offset for source tz at this moment
+      const testDate = new Date(`${raw}:00`)
+      const srcFmt = new Intl.DateTimeFormat('en-CA', { timeZone: tzSrc, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false })
+      const dstFmt = new Intl.DateTimeFormat('en-US', { timeZone: tzDst, weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+
+      // We'll convert by treating the input as UTC then re-interpret
+      // Build the instant: interpret the user's input as being in tzSrc
+      // We use a workaround: format a known UTC date in tzSrc, find the offset
+      const utcDate = new Date(Date.UTC(y, mo - 1, d, h, mi, 0))
+      // Determine tzSrc offset at that moment by formatting in tzSrc and comparing
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tzSrc,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      }).formatToParts(utcDate)
+      const tzHour = parseInt(parts.find(p => p.type === 'hour')!.value)
+      const tzMinute = parseInt(parts.find(p => p.type === 'minute')!.value)
+      const diffMs = (h - tzHour) * 60000 * 60 + (mi - tzMinute) * 60000
+      const adjustedUtc = new Date(utcDate.getTime() + diffMs)
+
+      timeBDisplay.textContent = dstFmt.format(adjustedUtc)
+
+      // Offset info
+      const fmtOff = (tz: string) => {
+        const d = new Date()
+        const s = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'short' }).formatToParts(d).find(p => p.type === 'timeZoneName')?.value ?? tz
+        return s
+      }
+      offsetInfo.textContent = `${tzSrc} (${fmtOff(tzSrc)}) → ${tzDst} (${fmtOff(tzDst)})`
+    } catch (e) {
+      timeBDisplay.textContent = 'error'
+    }
+  }
+
+  timeA.addEventListener('input', convert)
+  tzA.addEventListener('change', convert)
+  tzB.addEventListener('change', convert)
+  convert()
+
+  document.getElementById('reset')!.addEventListener('click', () => {
+    timeA.value = nowLocalString()
+    tzA.value = userLocalTz()
+    tzB.value = 'UTC'
+    convert()
+  })
+</script>

@@ -1,15 +1,27 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="temperature (°C / °F / K) — Oriz Universal Converter" description="temperature (°C / °F / K) — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Temperature Converter (°C / °F / K) — Oriz Universal Converter" description="Convert between Celsius, Fahrenheit, and Kelvin — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">temperature (°C / °F / K)</h1>
-    <p class="status mono">coming · v0.1</p>
-    <p class="lede">
-      This feature is on the v0.1 roadmap. The page exists so we can iterate on
-      the design and copy in parallel; the implementation lands next sprint.
-    </p>
+    <h1 class="h1">temperature converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <div class="converter">
+      <div class="row">
+        <label for="val-c">Celsius (°C)</label>
+        <input id="val-c" class="num-input" type="number" step="any" placeholder="0" data-unit="c" />
+      </div>
+      <div class="row">
+        <label for="val-f">Fahrenheit (°F)</label>
+        <input id="val-f" class="num-input" type="number" step="any" placeholder="0" data-unit="f" />
+      </div>
+      <div class="row">
+        <label for="val-k">Kelvin (K)</label>
+        <input id="val-k" class="num-input" type="number" step="any" placeholder="0" data-unit="k" />
+      </div>
+    </div>
+    <button class="reset-btn" id="reset">Reset</button>
   </article>
 </BaseLayout>
 
@@ -21,18 +33,79 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
   .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .converter { display: grid; gap: 0.75rem; max-width: 36rem; margin-bottom: 1.5rem; }
+  .row { display: grid; grid-template-columns: 14rem 1fr; align-items: center; gap: 1rem; }
+  label { font-size: 0.9375rem; color: var(--muted); font-family: var(--font-mono); }
+  .num-input {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.875rem;
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  .num-input:focus { border-color: var(--accent); }
+  .reset-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 120ms, border-color 120ms;
+  }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 540px) { .row { grid-template-columns: 1fr; gap: 0.25rem; } }
 </style>
+
+<script>
+  function fmt(n: number): string {
+    if (!isFinite(n)) return ''
+    return parseFloat(n.toPrecision(10)).toString()
+  }
+
+  // Convert any unit to Celsius
+  function toCelsius(val: number, unit: string): number {
+    if (unit === 'c') return val
+    if (unit === 'f') return (val - 32) * 5 / 9
+    if (unit === 'k') return val - 273.15
+    return val
+  }
+
+  // Convert Celsius to any unit
+  function fromCelsius(c: number, unit: string): number {
+    if (unit === 'c') return c
+    if (unit === 'f') return c * 9 / 5 + 32
+    if (unit === 'k') return c + 273.15
+    return c
+  }
+
+  const inputs = document.querySelectorAll<HTMLInputElement>('.num-input')
+
+  inputs.forEach(input => {
+    input.addEventListener('input', () => {
+      const raw = input.value.trim()
+      if (raw === '' || raw === '-') {
+        inputs.forEach(i => { if (i !== input) i.value = '' })
+        return
+      }
+      const val = parseFloat(raw)
+      if (isNaN(val)) return
+      const unit = input.dataset.unit!
+      const celsius = toCelsius(val, unit)
+      inputs.forEach(i => {
+        if (i === input) return
+        i.value = fmt(fromCelsius(celsius, i.dataset.unit!))
+      })
+    })
+  })
+
+  document.getElementById('reset')!.addEventListener('click', () => {
+    inputs.forEach(i => { i.value = '' })
+  })
+</script>

@@ -1,15 +1,77 @@
 ---
 import BaseLayout from '~/layouts/BaseLayout.astro'
 ---
-<BaseLayout title="area / volume — Oriz Universal Converter" description="area / volume — runs in your browser. Part of Oriz Universal Converter.">
+<BaseLayout title="Area &amp; Volume Converter — Oriz Universal Converter" description="Convert area (m², ft², acres) and volume (L, mL, gal, fl oz) — all in your browser.">
   <article class="tool">
     <p class="back mono"><a href="/">← all tools</a></p>
-    <h1 class="h1">area / volume</h1>
-    <p class="status mono">coming · v0.1</p>
-    <p class="lede">
-      This feature is on the v0.1 roadmap. The page exists so we can iterate on
-      the design and copy in parallel; the implementation lands next sprint.
-    </p>
+    <h1 class="h1">area / volume converter</h1>
+    <p class="status mono ready">ready · v1</p>
+
+    <h2 class="section-title">Area</h2>
+    <div class="converter" id="area-conv">
+      <div class="row">
+        <label for="m2">Square meters (m²)</label>
+        <input id="m2" class="area-input" type="number" step="any" placeholder="0" data-unit="m2" />
+      </div>
+      <div class="row">
+        <label for="km2">Square km (km²)</label>
+        <input id="km2" class="area-input" type="number" step="any" placeholder="0" data-unit="km2" />
+      </div>
+      <div class="row">
+        <label for="cm2">Square cm (cm²)</label>
+        <input id="cm2" class="area-input" type="number" step="any" placeholder="0" data-unit="cm2" />
+      </div>
+      <div class="row">
+        <label for="ft2">Square feet (ft²)</label>
+        <input id="ft2" class="area-input" type="number" step="any" placeholder="0" data-unit="ft2" />
+      </div>
+      <div class="row">
+        <label for="in2">Square inches (in²)</label>
+        <input id="in2" class="area-input" type="number" step="any" placeholder="0" data-unit="in2" />
+      </div>
+      <div class="row">
+        <label for="acre">Acres</label>
+        <input id="acre" class="area-input" type="number" step="any" placeholder="0" data-unit="acre" />
+      </div>
+      <div class="row">
+        <label for="ha">Hectares (ha)</label>
+        <input id="ha" class="area-input" type="number" step="any" placeholder="0" data-unit="ha" />
+      </div>
+    </div>
+    <button class="reset-btn" id="reset-area">Reset area</button>
+
+    <h2 class="section-title" style="margin-top:2.5rem">Volume</h2>
+    <div class="converter" id="vol-conv">
+      <div class="row">
+        <label for="l">Liters (L)</label>
+        <input id="l" class="vol-input" type="number" step="any" placeholder="0" data-unit="l" />
+      </div>
+      <div class="row">
+        <label for="ml">Milliliters (mL)</label>
+        <input id="ml" class="vol-input" type="number" step="any" placeholder="0" data-unit="ml" />
+      </div>
+      <div class="row">
+        <label for="m3">Cubic meters (m³)</label>
+        <input id="m3" class="vol-input" type="number" step="any" placeholder="0" data-unit="m3" />
+      </div>
+      <div class="row">
+        <label for="gal">US Gallons (gal)</label>
+        <input id="gal" class="vol-input" type="number" step="any" placeholder="0" data-unit="gal" />
+      </div>
+      <div class="row">
+        <label for="floz">US fl oz</label>
+        <input id="floz" class="vol-input" type="number" step="any" placeholder="0" data-unit="floz" />
+      </div>
+      <div class="row">
+        <label for="cup">US Cups</label>
+        <input id="cup" class="vol-input" type="number" step="any" placeholder="0" data-unit="cup" />
+      </div>
+      <div class="row">
+        <label for="pt">Pints (pt)</label>
+        <input id="pt" class="vol-input" type="number" step="any" placeholder="0" data-unit="pt" />
+      </div>
+    </div>
+    <button class="reset-btn" id="reset-vol">Reset volume</button>
   </article>
 </BaseLayout>
 
@@ -19,20 +81,92 @@ import BaseLayout from '~/layouts/BaseLayout.astro'
   .back a { color: var(--muted); text-decoration: none; }
   .back a:hover { color: var(--ink); }
   .h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
+  .section-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 1rem; }
   .status { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 2rem; }
   .status.ready { color: var(--accent); }
-  .lede { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 56ch; }
-  .placeholder { max-width: 60ch; }
-  .placeholder p { color: var(--muted); margin: 0 0 1rem; }
-  .io {
-    width: 100%;
-    padding: 1rem;
+  .converter { display: grid; gap: 0.75rem; max-width: 36rem; margin-bottom: 1rem; }
+  .row { display: grid; grid-template-columns: 14rem 1fr; align-items: center; gap: 1rem; }
+  label { font-size: 0.9375rem; color: var(--muted); font-family: var(--font-mono); }
+  input[type="number"] {
+    padding: 0.6rem 0.875rem;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.875rem;
-    resize: vertical;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 120ms;
   }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 0.75rem; }
+  input[type="number"]:focus { border-color: var(--accent); }
+  .reset-btn {
+    padding: 0.5rem 1.25rem;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: color 120ms, border-color 120ms;
+  }
+  .reset-btn:hover { color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 540px) { .row { grid-template-columns: 1fr; gap: 0.25rem; } }
 </style>
+
+<script>
+  function fmt(n: number): string {
+    if (!isFinite(n)) return ''
+    return parseFloat(n.toPrecision(10)).toString()
+  }
+
+  function wire(selector: string, baseFactors: Record<string, number>) {
+    const inputs = document.querySelectorAll<HTMLInputElement>(selector)
+    inputs.forEach(input => {
+      input.addEventListener('input', () => {
+        const raw = input.value.trim()
+        if (raw === '' || raw === '-') {
+          inputs.forEach(i => { if (i !== input) i.value = '' })
+          return
+        }
+        const val = parseFloat(raw)
+        if (isNaN(val)) return
+        const unit = input.dataset.unit!
+        const base = val * baseFactors[unit]
+        inputs.forEach(i => {
+          if (i === input) return
+          i.value = fmt(base / baseFactors[i.dataset.unit!])
+        })
+      })
+    })
+  }
+
+  // Area: m² per unit
+  wire('.area-input', {
+    m2:   1,
+    km2:  1e6,
+    cm2:  1e-4,
+    ft2:  0.09290304,
+    in2:  0.00064516,
+    acre: 4046.8564224,
+    ha:   10000,
+  })
+
+  // Volume: liters per unit
+  wire('.vol-input', {
+    l:    1,
+    ml:   0.001,
+    m3:   1000,
+    gal:  3.785411784,
+    floz: 0.0295735295625,
+    cup:  0.2365882365,
+    pt:   0.473176473,
+  })
+
+  document.getElementById('reset-area')!.addEventListener('click', () => {
+    document.querySelectorAll<HTMLInputElement>('.area-input').forEach(i => { i.value = '' })
+  })
+  document.getElementById('reset-vol')!.addEventListener('click', () => {
+    document.querySelectorAll<HTMLInputElement>('.vol-input').forEach(i => { i.value = '' })
+  })
+</script>
